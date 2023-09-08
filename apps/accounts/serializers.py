@@ -1,3 +1,5 @@
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
@@ -34,3 +36,12 @@ class AccountCreationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Account.objects.create_user(**validated_data)
+
+
+class AccountAuthenticationSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+
+        return token
