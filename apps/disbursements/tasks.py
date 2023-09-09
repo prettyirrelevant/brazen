@@ -35,7 +35,7 @@ def initiate_disbursement(disbursement_id):
             destination=disbursement.beneficiary.account_name,
         )
 
-        disbursement.next_run_timestamp = disbursement.update_next_run_timestamp()
+        disbursement.update_next_run_timestamp()
         disbursement.save()
 
 
