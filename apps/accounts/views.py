@@ -1,4 +1,5 @@
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenObtainPairView, TokenRefreshView
 
 from rest_framework import status
 from rest_framework.generics import CreateAPIView
@@ -7,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from brazen.helpers import success_response
 
 from .models import Account
-from .serializers import AccountAuthenticationSerializer, AccountCreationSerializer
+from .serializers import AccountCreationSerializer
 
 
 class AccountCreationAPIView(CreateAPIView):
@@ -21,5 +22,20 @@ class AccountCreationAPIView(CreateAPIView):
 
 
 class AccountAuthenticationAPIView(TokenObtainPairView):
-    permission_classes = (AllowAny,)
-    serializer_class = AccountAuthenticationSerializer
+    serializer_class = TokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        return success_response(response.data)
+
+
+class AccountAuthenticationRefreshAPIView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        return success_response(data=response.data, status_code=response.status_code)
+
+
+class AccountAuthenticationBlacklistAPIView(TokenBlacklistView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        return success_response(data=response.data, status_code=response.status_code)
