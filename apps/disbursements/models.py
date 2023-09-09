@@ -15,4 +15,5 @@ class Disbursement(models.Model):
     status = models.CharField('status', choices=DisbursementStatus.choices, default=DisbursementStatus.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    next_run_timestamp = models.DateTimeField(null=True, blank=True)
 
