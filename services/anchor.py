@@ -1,3 +1,4 @@
+import random
 from decimal import Decimal
 
 import requests
@@ -54,6 +55,24 @@ class AnchorClient:
                     'type': 'DepositAccount',
                     'attributes': {'productName': 'SAVINGS'},
                     'relationships': {'customer': {'data': {'id': customer_id, 'type': 'IndividualCustomer'}}},
+                },
+            },
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    def verify_kyc(self, customer_id: str, gender: str):
+        bvn = str(random.randint(10000000000, 99999999999))
+        dob = '2000-12-24'
+
+        response = self.session.post(
+            url=f'{self.base_url}/api/v1/customers/{customer_id}/verification/individual',
+            headers={'x-anchor-key': self.api_key},
+            json={
+                'data': {
+                    'type': 'Verification',
+                    'attributes': {'level': 'TIER_2', 'level2': {'bvn': bvn, 'dateOfBirth': dob, 'gender': gender}},
                 },
             },
         )
@@ -136,3 +155,5 @@ class AnchorClient:
         response.raise_for_status()
 
         return response.json()
+
+

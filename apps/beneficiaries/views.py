@@ -1,13 +1,11 @@
 from rest_framework import status
-from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from apps.beneficiaries.models import Beneficiary
 from apps.beneficiaries.serializers import BeneficiarySerializer
-from apps.disbursements.serializers import DisbursementSerializer
+from common.helpers import success_response
 
-from common.helpers import success_response, error_response
 
 class BeneficiaryView(ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -20,8 +18,6 @@ class BeneficiaryView(ModelViewSet):
         return success_response(data=serializer.data, status_code=status.HTTP_201_CREATED)
 
     def get_queryset(self):
-        if self.request.user.is_anonymous:
-            return []
         return Beneficiary.objects.filter(account=self.request.user)
 
-        
+
