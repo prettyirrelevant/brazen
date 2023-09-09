@@ -40,7 +40,7 @@ class WebhookAPIView(APIView):
             tx.status = TransactionStatus.SUCCESSFUL
 
             # NOTE: This should not be like this i.e. race condition
-            tx.source.balance -= request.data['payment']['amount'] / 100
+            tx.source.balance -= tx.amount
             tx.source.save()
             tx.save()
         if request.data.type == 'nip.transfer.failed':
