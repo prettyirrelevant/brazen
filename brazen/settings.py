@@ -287,3 +287,6 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'UPDATE_LAST_LOGIN': True,
 }
+
+
+ANCHOR_API_KEY = env.str('ANCHOR_API_KEY')
