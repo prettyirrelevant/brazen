@@ -43,7 +43,7 @@ class WebhookAPIView(APIView):
             )
 
             # NOTE: This should not be like this i.e. race condition
-            source.balance += request.data['attributes']['payment']['amount'] / 100
+            source.balance += request.data['data']['attributes']['payment']['amount'] / 100
             source.save()
 
         if request.data['data']['type'] == 'nip.transfer.successful':
