@@ -4,6 +4,7 @@ from apps.accounts.models import Account
 from apps.beneficiaries.models import Beneficiary
 from apps.disbursements.choices import DisbursementFrequency, DisbursementStatus
 
+from datetime import timedelta
 
 class Disbursement(models.Model):
     description = models.TextField()
@@ -16,4 +17,17 @@ class Disbursement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     next_run_timestamp = models.DateTimeField(null=True, blank=True)
+
+
+    def update_next_run_timestamp(self):
+        if self.frequency == DisbursementFrequency.THIRTY_MINS:
+           self.next_run_timestamp = self.next_run_timestamp + timedelta(minutes=30)
+        elif self.frequency == DisbursementFrequency.BIWEEKLY:
+            self.next_run_timestamp = self.next_run_timestamp + timedelta(weeks=2)
+        elif self.frequency == DisbursementFrequency.HOURLY:
+            self.next_run_timestamp = self.next_run_timestamp + timedelta(hours=1)
+        elif self.frequency == DisbursementFrequency.WEEKLY:
+            self.next_run_timestamp = self.next_run_timestamp + timedelta(weeks=1)
+        elif self.frequency == DisbursementFrequency.MONTHLY:
+            self.next_run_timestamp = self.next_run_timestamp.replace(day=1) + timedelta(days=32)
 

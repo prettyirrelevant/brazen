@@ -11,6 +11,7 @@ class Beneficiary(models.Model):
     bank_code = models.CharField(max_length=150, null=True, blank=False)
     bank_id = models.CharField(max_length=150, null=True, blank=True)
 
+    counterparty_id = models.CharField(max_length=150, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
