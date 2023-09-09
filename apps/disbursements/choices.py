@@ -7,3 +7,7 @@ class DisbursementFrequency(models.TextChoices):
     WEEKLY = 'Weekly'
     BIWEEKLY = 'Biweekly'
     MONTHLY = 'Monthly'
+
+class DisbursementStatus(models.TextChoices):
+    ACTIVE = 'active'
+    INACTIVE = 'inactive'

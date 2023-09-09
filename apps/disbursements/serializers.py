@@ -13,6 +13,7 @@ class DisbursementSerializer(ModelSerializer):
             'account',
             'created_at',
             'updated_at',
+            'status',
         ]
 
     def create(self, validated_data):
