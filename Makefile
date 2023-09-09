@@ -1,4 +1,4 @@
-LINT_PATHS = apps/ services/ manage.py
+LINT_PATHS = apps/ services/ brazen/ manage.py
 
 include .env.dev
 
@@ -12,5 +12,5 @@ format:
 	black $(LINT_PATHS)
 
 runserver:
-	@echo 'Running optimart development server...'
+	@echo 'Running brazen development server...'
 	python -X dev manage.py runserver
