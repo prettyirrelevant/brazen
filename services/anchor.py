@@ -113,10 +113,8 @@ class AnchorClient:
                 },
             },
         )
-        if not response.ok:
-            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
-            response.raise_for_status()
-
+    
+        response.raise_for_status()
         return response.json()
 
     def initiate_transfer(self, amount: Decimal, reason: str, counterparty_id: str, account_id: str):
