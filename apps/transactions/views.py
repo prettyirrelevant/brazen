@@ -74,6 +74,8 @@ class TransactionsAPIView(ListAPIView):
 
 
 class VerifyAccountAPIView(APIView):
+    permission_classes = (AllowAny,)
+
     def get(self, request, *args, **kwargs):
         account_number = kwargs['account_number']
         bank_code_or_id = kwargs['bank_code_or_id']

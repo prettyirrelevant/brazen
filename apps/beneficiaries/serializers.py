@@ -19,6 +19,7 @@ class BeneficiarySerializer(ModelSerializer):
             'account',
             'created_at',
             'updated_at',
+            'counterparty_id',
         ]
 
     def create(self, validated_data):
