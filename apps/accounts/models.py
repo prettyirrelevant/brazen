@@ -21,6 +21,10 @@ class Account(AbstractUser):
     country = models.CharField('country', max_length=10, choices=Country.choices, default=Country.NIGERIA)
     state = models.CharField('state', max_length=20, choices=State.choices, null=False, blank=False)
 
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    deposit_account_id = models.CharField('deposit account id', max_length=150, null=True, blank=True)
+    customer_id = models.CharField('customer id', max_length=150, null=True, blank=True)
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ('first_name', 'last_name', 'phone_number')
 

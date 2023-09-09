@@ -71,5 +71,7 @@ handler500 = handler_500
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.accounts.urls')),
+    path('api/', include('apps.beneficiaries.urls')),
+     path('api/', include('apps.disbursements.urls')),
     path('api/docs', docs_schema_view.with_ui('swagger', cache_timeout=0), name='api-docs'),
 ]

@@ -20,9 +20,9 @@ class AccountCreationSerializer(serializers.ModelSerializer):
 
         return value
 
-    def validate_phone_number(self, value):
-        if not re.match(r'^(0)([7-9][01])(\d{7})$', value):
-            raise serializers.ValidationError('Phone number provided is not a valid Nigerian number.')
+    # def validate_phone_number(self, value):
+    #     if not re.match(r'^(0)([7-9][01])(\d{7})$', value):
+    #         raise serializers.ValidationError('Phone number provided is not a valid Nigerian number.')
 
     class Meta:
         model = Account
