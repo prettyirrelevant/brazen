@@ -30,7 +30,7 @@ class WebhookAPIView(APIView):
         logger.info(f'Webhook payload is: {request.data}')
         if request.data['data']['type'] == 'payment.settled':
             source = Account.objects.get(
-                deposit_account_id=request.data['data']['attributes']['settlementAccount']['accountId'],
+                deposit_account_id=request.data['data']['attributes']['payment']['settlementAccount']['accountId'],
             )
             Transaction.objects.create(
                 anchor_tx_id=request.data['data']['attributes']['payment']['paymentId'],
