@@ -1,5 +1,5 @@
 import requests
-
+from decimal import Decimal
 
 class AnchorClient:
     def __init__(self, base_url, api_key):
@@ -87,14 +87,14 @@ class AnchorClient:
 
         return response.json()
 
-    def initiate_transfer(self, amount: int, reason: str, counterparty_id: str, account_id: str):
+    def initiate_transfer(self, amount: Decimal, reason: str, counterparty_id: str, account_id: str):
         response = self.session.post(
             url=f'{self.base_url}/api/v1/transfers',
             headers={'x-anchor-key': self.api_key},
             json={
                 'data': {
                     'type': 'NIPTransfer',
-                    'attributes': {'amount': amount * 100, 'currency': 'NGN', 'reason': reason},
+                    'attributes': {'amount': int(amount * 100), 'currency': 'NGN', 'reason': reason},
                     'relationships': {
                         'counterParty': {
                             'data': {
@@ -116,6 +116,12 @@ class AnchorClient:
             url=f'{self.base_url}/api/v1/banks',
             headers={'x-anchor-key': self.api_key},
         )
+        response.raise_for_status()
+
+        return response.json()
+
+    def get_deposit_account_balance(self, deposit_account_id: str):
+        response = self.session.get(f'{self.base_url}/api/v1/accounts/balance/{deposit_account_id}')
         response.raise_for_status()
 
         return response.json()
