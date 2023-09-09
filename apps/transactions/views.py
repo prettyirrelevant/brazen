@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import transaction
 import logging
-
+from decimal import Decimal
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -43,7 +43,7 @@ class WebhookAPIView(APIView):
             )
 
             # NOTE: This should not be like this i.e. race condition
-            source.balance += request.data['data']['attributes']['payment']['amount'] / 100
+            source.balance += Decimal(request.data['data']['attributes']['payment']['amount'] / 100)
             source.save()
 
         if request.data['data']['type'] == 'nip.transfer.successful':
