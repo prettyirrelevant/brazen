@@ -23,16 +23,16 @@ class WebhookAPIView(APIView):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):  # noqa: ARG002
-        if request.data['type'] == 'payment.settled':
+        if request.data['data']['type'] == 'payment.settled':
             source = Account.objects.get(
-                deposit_account_id=request.data['attributes']['settlementAccount']['accountId'],
+                deposit_account_id=request.data['data']['attributes']['settlementAccount']['accountId'],
             )
             Transaction.objects.create(
-                anchor_tx_id=request.data['attributes']['payment']['paymentId'],
+                anchor_tx_id=request.data['data']['attributes']['payment']['paymentId'],
                 source=source,
                 destination='self',
                 tx_type=TransactionType.FUNDING,
-                amount=request.data['attributes']['payment']['amount'] / 100,
+                amount=request.data['data']['attributes']['payment']['amount'] / 100,
                 status=TransactionStatus.SUCCESSFUL,
                 metadata=request.data,
             )
@@ -41,8 +41,8 @@ class WebhookAPIView(APIView):
             source.balance += request.data['attributes']['payment']['amount'] / 100
             source.save()
 
-        if request.data.type == 'nip.transfer.successful':
-            tx = Transaction.objects.get(anchor_tx_id=request.data['relationships']['transfer']['data']['id'])
+        if request.data['data']['type'] == 'nip.transfer.successful':
+            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
             tx.metadata = request.data
             tx.status = TransactionStatus.SUCCESSFUL
 
@@ -50,8 +50,8 @@ class WebhookAPIView(APIView):
             tx.source.balance -= tx.amount
             tx.source.save()
             tx.save()
-        if request.data.type == 'nip.transfer.failed':
-            tx = Transaction.objects.get(anchor_tx_id=request.data['relationships']['transfer']['data']['id'])
+        if request.data['data']['type'] == 'nip.transfer.failed':
+            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
             tx.metadata = request.data
             tx.status = TransactionStatus.FAILED
             tx.save()
