@@ -17,8 +17,8 @@ class AccountCreationAPIView(CreateAPIView):
     serializer_class = AccountCreationSerializer
 
     def create(self, request, *args, **kwargs):
-        super().create(request, *args, **kwargs)
-        return success_response(data=None, status_code=status.HTTP_201_CREATED)
+        response = super().create(request, *args, **kwargs)
+        return success_response(data=response.data, status_code=status.HTTP_201_CREATED)
 
 
 class AccountAuthenticationAPIView(TokenObtainPairView):
