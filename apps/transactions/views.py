@@ -27,8 +27,8 @@ class WebhookAPIView(APIView):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):  # noqa: ARG002
+        logger.info(f'Webhook payload is: {request.data}')
         if request.data['data']['type'] == 'payment.settled':
-            logger.info(f'Response got: {request.data}')
             source = Account.objects.get(
                 deposit_account_id=request.data['data']['attributes']['settlementAccount']['accountId'],
             )
