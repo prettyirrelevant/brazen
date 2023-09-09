@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import transaction
+import logging
 
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -18,12 +19,16 @@ anchor_client = AnchorClient(
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 class WebhookAPIView(APIView):
     permission_classes = (AllowAny,)
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):  # noqa: ARG002
         if request.data['data']['type'] == 'payment.settled':
+            logger.info(f'Response got: {request.data}')
             source = Account.objects.get(
                 deposit_account_id=request.data['data']['attributes']['settlementAccount']['accountId'],
             )
