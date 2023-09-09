@@ -1,7 +1,10 @@
 import random
+import logging
 from decimal import Decimal
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class AnchorClient:
@@ -42,7 +45,9 @@ class AnchorClient:
                 },
             },
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -58,7 +63,9 @@ class AnchorClient:
                 },
             },
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -76,7 +83,9 @@ class AnchorClient:
                 },
             },
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -104,7 +113,9 @@ class AnchorClient:
                 },
             },
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -128,7 +139,9 @@ class AnchorClient:
                 },
             },
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -137,13 +150,17 @@ class AnchorClient:
             url=f'{self.base_url}/api/v1/banks',
             headers={'x-anchor-key': self.api_key},
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
     def get_deposit_account_balance(self, deposit_account_id: str):
         response = self.session.get(f'{self.base_url}/api/v1/accounts/balance/{deposit_account_id}')
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
 
@@ -152,6 +169,8 @@ class AnchorClient:
             url=f'{self.base_url}/api/v1/payments/verify-account/{bank_code}/{account_number}',
             headers={'x-anchor-key': self.api_key},
         )
-        response.raise_for_status()
+        if not response.ok:
+            logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
+            response.raise_for_status()
 
         return response.json()
