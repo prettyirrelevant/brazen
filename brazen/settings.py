@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +48,7 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'rest_framework',
     'huey.contrib.djhuey',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 LOCAL_APPS: list[str] = ['apps.accounts', 'apps.beneficiaries', 'apps.transactions', 'apps.disbursements']
@@ -180,6 +181,7 @@ X_FRAME_OPTIONS = 'DENY'
 REST_FRAMEWORK: dict[str, Any] = {
     'PAGE_SIZE': 20,
     'ORDERING_PARAM': 'order_by',
+    'EXCEPTION_HANDLER': 'common.exception_handler.custom_exception_handler',
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
@@ -275,3 +277,13 @@ RESEND_API_KEY = env.str('RESEND_API_KEY')
 # CACHE SETTINGS
 # ==============================================================================
 CACHES = {'default': env.cache()}
+
+
+# ==============================================================================
+# DJANGO REST FRAMEWORK SIMPLE-JWT SETTINGS
+# ==============================================================================
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'UPDATE_LAST_LOGIN': True,
+}
