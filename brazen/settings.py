@@ -181,6 +181,7 @@ X_FRAME_OPTIONS = 'DENY'
 REST_FRAMEWORK: dict[str, Any] = {
     'PAGE_SIZE': 20,
     'ORDERING_PARAM': 'order_by',
+    'EXCEPTION_HANDLER': 'common.exception_handler.custom_exception_handler',
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],

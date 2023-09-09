@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
 
-from brazen.helpers import success_response
+from common.helpers import success_response
 
 from .models import Account
 from .serializers import AccountCreationSerializer

@@ -1,4 +1,4 @@
-LINT_PATHS = apps/ services/ brazen/ manage.py
+LINT_PATHS = apps/ services/ brazen/ common/ manage.py
 
 include .env.dev
 
