@@ -123,7 +123,7 @@ class AnchorClient:
                                 'type': 'CounterParty',
                             },
                         },
-                        'account': {'data': {'id': account_id, 'type': 'SubAccount'}},
+                        'account': {'data': {'id': account_id, 'type': 'DepositAccount'}},
                     },
                 },
             },
@@ -155,5 +155,3 @@ class AnchorClient:
         response.raise_for_status()
 
         return response.json()
-
-

@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
@@ -47,7 +46,7 @@ class AccountCreationSerializer(serializers.ModelSerializer):
             'state',
         )
         read_only_fields = [
-            "country",
+            'country',
         ]
 
     def create(self, validated_data):
@@ -77,11 +76,13 @@ class AccountCreationSerializer(serializers.ModelSerializer):
             account.deposit_account_id = deposit_account_id
             account.deposit_account_number = deposit_account_number
             account.deposit_bank_name = deposit_bank_name
-            account.save(update_fields=[
-                'customer_id',
-                'deposit_account_id',
-                'deposit_account_number',
-                'deposit_bank_name',
-            ])
+            account.save(
+                update_fields=[
+                    'customer_id',
+                    'deposit_account_id',
+                    'deposit_account_number',
+                    'deposit_bank_name',
+                ],
+            )
 
         return account

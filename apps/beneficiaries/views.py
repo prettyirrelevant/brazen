@@ -19,5 +19,3 @@ class BeneficiaryView(ModelViewSet):
 
     def get_queryset(self):
         return Beneficiary.objects.filter(account=self.request.user)
-
-

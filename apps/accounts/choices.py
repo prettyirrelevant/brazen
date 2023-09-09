@@ -4,10 +4,12 @@ from django.db import models
 class Country(models.TextChoices):
     NIGERIA = 'NG'
 
+
 class Gender(models.TextChoices):
     MALE = 'Male'
     FEMALE = 'Female'
     OTHERS = 'Others'
+
 
 class State(models.TextChoices):
     FCT = 'FCT'
