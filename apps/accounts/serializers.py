@@ -46,6 +46,9 @@ class AccountCreationSerializer(serializers.ModelSerializer):
             'country',
             'state',
         )
+        read_only_fields = [
+            "country",
+        ]
 
     def create(self, validated_data):
         with transaction.atomic():
