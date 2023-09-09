@@ -15,6 +15,12 @@ anchor_client = AnchorClient(
 )
 
 
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = '__all__'
+
+
 class AccountCreationSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(min_length=8, required=True)

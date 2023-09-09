@@ -5,6 +5,7 @@ from .views import (
     AccountAuthenticationBlacklistAPIView,
     AccountAuthenticationRefreshAPIView,
     AccountCreationAPIView,
+    MyProfileAPIView,
 )
 
 urlpatterns = [
@@ -20,4 +21,5 @@ urlpatterns = [
         AccountAuthenticationBlacklistAPIView.as_view(),
         name='blacklist-account-auth-credentials',
     ),
+    path('accounts/me', MyProfileAPIView.as_view(), name='my-account'),
 ]

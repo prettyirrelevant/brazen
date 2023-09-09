@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 
 from rest_framework.generics import ListAPIView
@@ -6,9 +7,15 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import Account
 from common.helpers import success_response
+from services.anchor import AnchorClient
 
 from .models import Transaction, TransactionStatus, TransactionType
 from .serializers import TransactionSerializer
+
+anchor_client = AnchorClient(
+    api_key=settings.ANCHOR_API_KEY,
+    base_url=settings.ANCHOR_BASE_URL,
+)
 
 
 class WebhookAPIView(APIView):
@@ -64,3 +71,11 @@ class TransactionsAPIView(ListAPIView):
     def list(self, request, *args, **kwargs):  # noqa: A003
         response = super().list(request, *args, **kwargs)
         return success_response(response.data)
+
+
+class VerifyAccountAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        account_number = kwargs['account_number']
+        bank_code_or_id = kwargs['bank_code_or_id']
+        resp = anchor_client.verify_account(account_number=account_number, bank_code=bank_code_or_id)
+        return resp['data']

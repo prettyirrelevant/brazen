@@ -1,5 +1,5 @@
-import random
 import logging
+import random
 from decimal import Decimal
 
 import requests
@@ -113,7 +113,7 @@ class AnchorClient:
                 },
             },
         )
-    
+
         response.raise_for_status()
         return response.json()
 
