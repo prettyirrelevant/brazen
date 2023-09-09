@@ -35,9 +35,9 @@ class HttpAndHttpsOpenAPISchemaGenerator(OpenAPISchemaGenerator):
 
 docs_schema_view = get_schema_view(
     openapi.Info(
-        title='BridgeBloc API',
+        title='Brazen API',
         default_version='v1',
-        description='BridgeBloc API',
+        description='Brazen API',
         license=openapi.License(name='MIT License'),
     ),
     generator_class=HttpAndHttpsOpenAPISchemaGenerator,
