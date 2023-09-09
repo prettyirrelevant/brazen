@@ -1,5 +1,7 @@
-import requests
 from decimal import Decimal
+
+import requests
+
 
 class AnchorClient:
     def __init__(self, base_url, api_key):
