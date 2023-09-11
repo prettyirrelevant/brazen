@@ -7,7 +7,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
-from apps.accounts.models import Account
+from apps.accounts.models import Account, Wallet
 from common.helpers import success_response
 from services.anchor import AnchorClient
 
@@ -30,25 +30,19 @@ class WebhookAPIView(APIView):
     def post(self, request, *args, **kwargs):  # noqa: ARG002
         logger.info(f'Webhook payload is: {request.data}')
         if request.data['data']['type'] == 'payment.settled':
-            source = Account.objects.get(
-                deposit_account_id=request.data['data']['attributes']['payment']['settlementAccount']['accountId'],
-            )
-            Transaction.objects.create(
-                anchor_tx_id=request.data['data']['attributes']['payment']['paymentId'],
-                source=source,
-                destination='self',
-                tx_type=TransactionType.FUNDING,
-                amount=request.data['data']['attributes']['payment']['amount'] / 100,
-                status=TransactionStatus.SUCCESSFUL,
-                metadata=request.data,
-            )
+            account_id: str = request.data['data']['attributes']['payment']['settlementAccount']['accountId']
+            currency: str = request.data['data']['attributes']['payment']['currency']
+            amount_in_kobo: float = request.data['data']['attributes']['payment']['amount']
+            provider_tx_id: str = request.data['data']['attributes']['payment']['paymentId']
 
-            # source.balance += Decimal(request.data['data']['attributes']['payment']['amount'] / 100)
-            amount_in_kobo = request.data['data']['attributes']['payment']['amount']
             amount_in_ngn = Decimal(amount_in_kobo / 100)
-            source.balance = F("balance") + amount_in_ngn
-            source.save()
-            
+            wallet: Wallet = Wallet.objects.get(provider_account_id=account_id, currency=currency.upper())
+
+            wallet.credit(
+                provider_tx_id=provider_tx_id,
+                amount = amount_in_ngn,
+                metadata=request.data
+            )
 
         if request.data['data']['type'] == 'nip.transfer.successful':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
@@ -58,6 +52,7 @@ class WebhookAPIView(APIView):
             tx.source.balance = F("balance") - tx.amount
             tx.source.save()
             tx.save()
+
         if request.data['data']['type'] == 'nip.transfer.failed':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
             tx.metadata = request.data

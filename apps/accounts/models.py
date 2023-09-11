@@ -52,17 +52,17 @@ class Profile(BaseModel):
     
 
 class Wallet(BaseModel):
-    account = models.OneToOneField(
+    account = models.ForeignKey(
         Account,
         on_delete=models.SET_NULL,
-        related_name='wallet',
+        related_name='wallets',
         null=True,
         blank=True,
     )
-    profile = models.OneToOneField(
+    profile = models.ForeignKey(
         Profile,
         on_delete=models.SET_NULL,
-        related_name='wallet',
+        related_name='wallets',
         null=True,
         blank=True,
     )
@@ -90,6 +90,9 @@ class Wallet(BaseModel):
     is_locked = models.BooleanField(default=False)
     locked_reason = models.CharField(max_length=1024, blank=True, default="")
 
+    def __str__(self):
+        return f"{self.uid} - {self.currency}"
+
     class Meta:
         unique_together = ("account", "profile", "currency")
 
@@ -97,22 +100,49 @@ class Wallet(BaseModel):
     def balance(self) -> Decimal:
         return self._balance
 
-    def create_transaction_record(self) -> Transaction:
-        pass
+    def create_transaction_record(
+        self,
+        provider_tx_id,
+        destination,
+        tx_type,
+        amount,
+        status,
+        metadata
+    ) -> Transaction:
+        return Transaction.objects.create(
+            provider_tx_id=provider_tx_id,
+            wallet=self,
+            account=self.account,
+            destination=destination,
+            tx_type=tx_type,
+            amount=amount,
+            status=status,
+            metadata=metadata,
+        )
 
     def credit(
         self,
+        provider_tx_id: str,
         amount: Decimal,
-        narration: str,
-        reference: str,
         **kwargs,
     ) -> Transaction:
         transaction_type: str = TransactionType.FUNDING
-
+    
         with transaction.atomic():
             __balance = self._balance
-            transaction = self.create_transaction_record()
 
+            transaction = self.create_transaction_record(
+                provider_tx_id=provider_tx_id,
+                destination="self",
+                tx_type=transaction_type,
+                amount=amount,
+                status=TransactionStatus.SUCCESSFUL,
+                previous_balance = __balance,
+                metadata=kwargs.get("metadata", None)
+            )
+            self._balance = models.F("_balance") + amount
+            self.save()
+            
         return transaction
 
     def debit(
