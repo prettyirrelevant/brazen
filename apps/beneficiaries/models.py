@@ -1,11 +1,10 @@
 from django.db import models
 
-from apps.accounts.models import Account
 
 
 class Beneficiary(models.Model):
     account = models.ForeignKey(
-        Account,
+        "accounts.Account",
         on_delete=models.SET_NULL,
         related_name='beneficiaries',
         null=True,

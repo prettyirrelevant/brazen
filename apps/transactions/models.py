@@ -1,6 +1,5 @@
 from django.db import models
 
-from apps.accounts.models import Account
 
 
 class TransactionStatus(models.TextChoices):
@@ -24,7 +23,7 @@ class Transaction(models.Model):
         null=False,
         blank=False,
     )
-    source = models.ForeignKey(Account, related_name='transactions', on_delete=models.CASCADE, null=False, blank=False)
+    source = models.ForeignKey("accounts.Account", related_name='transactions', on_delete=models.CASCADE, null=False, blank=False)
     destination = models.CharField('destination', max_length=200, null=False, blank=False)
     amount = models.DecimalField('amount', max_digits=20, decimal_places=2, null=False, blank=False)
     status = models.CharField('status', max_length=50, choices=TransactionStatus.choices, null=False, blank=False)

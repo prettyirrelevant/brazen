@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 from services.anchor import AnchorClient
 
-from .models import Account
+from .models import Account, Profile, Wallet
 
 anchor_client = AnchorClient(
     base_url=settings.ANCHOR_BASE_URL,
@@ -15,14 +15,7 @@ anchor_client = AnchorClient(
 )
 
 
-class AccountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Account
-        fields = '__all__'
-
-
 class AccountCreationSerializer(serializers.ModelSerializer):
-    phone_number = serializers.CharField(required=True)
     password = serializers.CharField(min_length=8, required=True)
 
     def validate_password(self, value):
@@ -33,68 +26,76 @@ class AccountCreationSerializer(serializers.ModelSerializer):
 
         return value
 
-    # def validate_phone_number(self, value):
-    #     if not re.match(r'^(0)([7-9][01])(\d{7})$', value):
-
     class Meta:
         model = Account
         fields = (
             'email',
             'first_name',
             'last_name',
+            'password',
+        )
+        
+
+    
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = (
             'gender',
             'phone_number',
-            'password',
             'address',
             'city',
             'postal_code',
-            'country',
             'state',
-        )
-        read_only_fields = [
             'country',
-        ]
+            'date_of_birth',
+        )
+
+    # def validate_phone_number(self, value):
+    #     if not re.match(r'^(0)([7-9][01])(\d{7})$', value):
 
     def create(self, validated_data):
         with transaction.atomic():
-            account: Account = Account.objects.create_user(**validated_data)
+            _user = self.context["request"].user
+            profile: Profile = Profile.objects.create(user=_user, **validated_data)
             resp_json = anchor_client.create_customer(
-                first_name=account.first_name,
-                last_name=account.last_name,
-                email=account.email,
-                phone_number=account.phone_number,
-                address=account.address,
-                city=account.city,
-                postal_code=account.postal_code,
-                state=account.state,
+                first_name=profile.account.first_name,
+                last_name=profile.account.last_name,
+                email=profile.account.email,
+                phone_number=profile.phone_number,
+                address=profile.address,
+                city=profile.city,
+                postal_code=profile.postal_code,
+                state=profile.state,
+                country=profile.country
             )
             customer_id = resp_json['data']['id']
-            anchor_client.verify_kyc(customer_id=customer_id, gender=account.gender)
-            resp_json = anchor_client.create_deposit_account(
-                customer_id=customer_id,
-            )
-
-            deposit_account_id = resp_json['data']['id']
-
-            retrieve_json = anchor_client.get_deposit_account(
-                deposit_account_id=deposit_account_id,
-            )
-            print(retrieve_json)
-            deposit_account_number = retrieve_json['included'][0]['attributes']['accountNumber']
-            deposit_bank_name = retrieve_json['included'][0]['attributes']['bank']['name']
+            profile.customer_id = customer_id
+            profile.save(update_fields=["customer_id"])
+        return profile
 
 
-            account.customer_id = customer_id
-            account.deposit_account_id = deposit_account_id
-            account.deposit_account_number = deposit_account_number
-            account.deposit_bank_name = deposit_bank_name
-            account.save(
-                update_fields=[
-                    'customer_id',
-                    'deposit_account_id',
-                    'deposit_account_number',
-                    'deposit_bank_name',
-                ],
-            )
+class WalletSerializer(serializers.ModelSerializer):
+    balance = serializers.DecimalField(max_digits=15, decimal_places=6, read_only=True)
+    class Meta:
+        model = Wallet
+        fields = (
+            'balance',
+            'currency',
+            'account_number',
+            'account_name',
+            'bank_name',
+            'bank_code',
+            'is_locked',
+            'locked_reason',
+        )
+       
+        read_only_fields = fields
 
-        return account
+
+class AccountSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer()
+    wallet = WalletSerializer()
+    class Meta:
+        model = Account
+        fields = '__all__'

@@ -73,6 +73,8 @@ class TransactionsAPIView(ListAPIView):
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
+        if self.request.user.is_anonymous:
+            return []
         qs = super().get_queryset()
         return qs.filter(source=self.request.user)
 

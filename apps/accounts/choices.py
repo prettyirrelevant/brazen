@@ -4,6 +4,10 @@ from django.db import models
 class Country(models.TextChoices):
     NIGERIA = 'NG'
 
+class WalletCurrency(models.TextChoices):
+    NAIRA = 'NGN'
+    DOLLAR = 'USD'
+
 
 class Gender(models.TextChoices):
     MALE = 'Male'

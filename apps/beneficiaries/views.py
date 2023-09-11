@@ -18,4 +18,6 @@ class BeneficiaryView(ModelViewSet):
         return success_response(data=serializer.data, status_code=status.HTTP_201_CREATED)
 
     def get_queryset(self):
+        if self.request.user.is_anonymous:
+            return []
         return Beneficiary.objects.filter(account=self.request.user)
