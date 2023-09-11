@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import transaction
+from django.db.models import F
 import logging
 from decimal import Decimal
 from rest_framework.generics import ListAPIView
@@ -42,17 +43,19 @@ class WebhookAPIView(APIView):
                 metadata=request.data,
             )
 
-            # NOTE: This should not be like this i.e. race condition
-            source.balance += Decimal(request.data['data']['attributes']['payment']['amount'] / 100)
+            # source.balance += Decimal(request.data['data']['attributes']['payment']['amount'] / 100)
+            amount_in_kobo = request.data['data']['attributes']['payment']['amount']
+            amount_in_ngn = Decimal(amount_in_kobo / 100)
+            source.balance = F("balance") + amount_in_ngn
             source.save()
+            
 
         if request.data['data']['type'] == 'nip.transfer.successful':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
             tx.metadata = request.data
             tx.status = TransactionStatus.SUCCESSFUL
 
-            # NOTE: This should not be like this i.e. race condition
-            tx.source.balance -= tx.amount
+            tx.source.balance = F("balance") - tx.amount
             tx.source.save()
             tx.save()
         if request.data['data']['type'] == 'nip.transfer.failed':

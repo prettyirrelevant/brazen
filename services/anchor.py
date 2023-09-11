@@ -167,15 +167,13 @@ class AnchorClient:
 
     def get_deposit_account(self, deposit_account_id: str):
         response = self.session.get(
-            url=f'{self.base_url}/api/v1/accounts/{deposit_account_id}',
-            params={'include': 'VirtualNuban'},
+            url=f'{self.base_url}/api/v1/accounts/{deposit_account_id}?include=VirtualNuban',
             headers={'x-anchor-key': self.api_key},
         )
         if not response.ok:
             logging.warning(f'Error occurred while fetching {response.url} with error {response.json()}')
             response.raise_for_status()
 
-        print(f'I got {response.json()}')
         return response.json()
 
     def verify_account(self, account_number: str, bank_code: str):

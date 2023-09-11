@@ -75,8 +75,14 @@ class AccountCreationSerializer(serializers.ModelSerializer):
             )
 
             deposit_account_id = resp_json['data']['id']
-            deposit_account_number = resp_json['data']['attributes']['accountNumber']
-            deposit_bank_name = resp_json['data']['attributes']['bank']['name']
+
+            retrieve_json = anchor_client.get_deposit_account(
+                deposit_account_id=deposit_account_id,
+            )
+            print(retrieve_json)
+            deposit_account_number = retrieve_json['included'][0]['attributes']['accountNumber']
+            deposit_bank_name = retrieve_json['included'][0]['attributes']['bank']['name']
+
 
             account.customer_id = customer_id
             account.deposit_account_id = deposit_account_id
