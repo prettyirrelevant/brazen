@@ -5,8 +5,8 @@ from .views import (
     AccountAuthenticationBlacklistAPIView,
     AccountAuthenticationRefreshAPIView,
     AccountCreationAPIView,
-    ProfileCreationAPIView,
     MyProfileAPIView,
+    ProfileCreationAPIView,
 )
 
 urlpatterns = [

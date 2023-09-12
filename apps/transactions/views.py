@@ -1,17 +1,19 @@
-from django.conf import settings
-from django.db import transaction
-from django.db.models import F
 import logging
 from decimal import Decimal
+
+from django.conf import settings
+from django.db import transaction
+
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
-from apps.accounts.models import Account, Wallet
+from apps.accounts.models import Wallet
 from common.helpers import success_response
 from services.anchor import AnchorClient
 
-from .models import Transaction, TransactionStatus, TransactionType
+from .choices import TransactionCategory, TransactionStatus
+from .models import Transaction
 from .serializers import TransactionSerializer
 
 anchor_client = AnchorClient(
@@ -41,17 +43,17 @@ class WebhookAPIView(APIView):
             wallet.credit(
                 provider_tx_id=provider_tx_id,
                 amount = amount_in_ngn,
-                metadata=request.data
+                category=TransactionCategory.FUNDING,
+                metadata=request.data,
             )
 
         if request.data['data']['type'] == 'nip.transfer.successful':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
-            tx.metadata = request.data
-            tx.status = TransactionStatus.SUCCESSFUL
-
-            tx.source.balance = F("balance") - tx.amount
-            tx.source.save()
-            tx.save()
+            with transaction.atomic:
+                tx.metadata = request.data
+                tx.status = TransactionStatus.SUCCESSFUL
+                tx.wallet.credit(transaction=tx)
+                tx.save()
 
         if request.data['data']['type'] == 'nip.transfer.failed':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])

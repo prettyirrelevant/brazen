@@ -34,9 +34,9 @@ class AccountCreationSerializer(serializers.ModelSerializer):
             'last_name',
             'password',
         )
-        
 
-    
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
@@ -56,7 +56,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         with transaction.atomic():
-            _user = self.context["request"].user
+            _user = self.context['request'].user
             profile: Profile = Profile.objects.create(user=_user, **validated_data)
             resp_json = anchor_client.create_customer(
                 first_name=profile.account.first_name,
@@ -67,11 +67,11 @@ class ProfileSerializer(serializers.ModelSerializer):
                 city=profile.city,
                 postal_code=profile.postal_code,
                 state=profile.state,
-                country=profile.country
+                country=profile.country,
             )
             customer_id = resp_json['data']['id']
             profile.customer_id = customer_id
-            profile.save(update_fields=["customer_id"])
+            profile.save(update_fields=['customer_id'])
         return profile
 
 
@@ -89,7 +89,7 @@ class WalletSerializer(serializers.ModelSerializer):
             'is_locked',
             'locked_reason',
         )
-       
+
         read_only_fields = fields
 
 
