@@ -48,10 +48,11 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'rest_framework',
     'huey.contrib.djhuey',
+    'encrypted_model_fields',
     'rest_framework_simplejwt.token_blacklist',
 ]
 
-LOCAL_APPS: list[str] = ['apps.accounts', 'apps.beneficiaries', 'apps.transactions', 'apps.disbursements']
+LOCAL_APPS: list[str] = ['apps.accounts', 'apps.transactions', 'apps.disbursements']
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -288,10 +289,21 @@ CACHES = {'default': env.cache()}
 # DJANGO REST FRAMEWORK SIMPLE-JWT SETTINGS
 # ==============================================================================
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3),
     'UPDATE_LAST_LOGIN': True,
 }
 
+
+# ==============================================================================
+# ANCHOR API SETTINGS
+# ==============================================================================
 ANCHOR_BASE_URL = env.str('ANCHOR_BASE_URL')
+
 ANCHOR_API_KEY = env.str('ANCHOR_API_KEY')
+
+
+# ==============================================================================
+# DJANGO ENCRYPTED MODEL FIELDS SETTINGS
+# ==============================================================================
+FIELD_ENCRYPTION_KEY = env.list('FIELD_ENCRYPTION_KEY')

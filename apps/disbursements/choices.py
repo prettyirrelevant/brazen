@@ -12,3 +12,10 @@ class DisbursementFrequency(models.TextChoices):
 class DisbursementStatus(models.TextChoices):
     ACTIVE = 'active'
     INACTIVE = 'inactive'
+
+
+class DisbursementEventStatus(models.TextChoices):
+    FAILURE = 'failure'
+    PENDING = 'pending'
+    SUCCESS = 'success'
+    NOT_STARTED = 'not started'

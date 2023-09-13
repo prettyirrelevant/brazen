@@ -1,49 +1,67 @@
-from datetime import timedelta
 from decimal import Decimal
+
+from django.conf import settings
 
 from rest_framework.serializers import ModelSerializer, ValidationError
 
-from apps.disbursements.choices import DisbursementFrequency
-from apps.disbursements.models import Disbursement
+from apps.accounts.choices import Currency
+from apps.disbursements.models import Beneficiary, Disbursement
+from services.anchor import AnchorClient
+
+anchor_client = AnchorClient(
+    base_url=settings.ANCHOR_BASE_URL,
+    api_key=settings.ANCHOR_API_KEY,
+)
+
+
+class BeneficiarySerializer(ModelSerializer):
+    class Meta:
+        model = Beneficiary
+        exclude = ()
+        read_only_fields = (
+            'account',
+            'created_at',
+            'updated_at',
+            'counterparty_id',
+        )
+
+    def create(self, validated_data):
+        validated_data['account'] = self.context['request'].user
+        beneficiary = super().create(validated_data)
+
+        counterparty_creation_response = anchor_client.create_counterparty(
+            account_name=beneficiary.account_name,
+            account_number=beneficiary.account_number,
+            bank_id=beneficiary.anchor_bank_id,
+            bank_code=beneficiary.anchor_bank_code,
+        )
+        beneficiary.counterparty_id = counterparty_creation_response['data']['id']
+        beneficiary.save()
+        return beneficiary
 
 
 class DisbursementSerializer(ModelSerializer):
     class Meta:
         model = Disbursement
-        exclude = ()
-        read_only_fields = [
+        read_only_fields = (
             'account',
             'created_at',
             'updated_at',
             'status',
-            'next_run_timestamp',
-        ]
+        )
 
     def create(self, validated_data):
-        _user = self.context['request'].user
-        validated_data['account'] = _user
-        disbursement: Disbursement = super().create(validated_data)
+        validated_data['account'] = self.context['request'].user
+        return super().create(validated_data)
 
-        if disbursement.frequency == DisbursementFrequency.THIRTY_MINS:
-            disbursement.next_run_timestamp = disbursement.created_at + timedelta(minutes=30)
-        elif disbursement.frequency == DisbursementFrequency.BIWEEKLY:
-            disbursement.next_run_timestamp = disbursement.created_at + timedelta(weeks=2)
-        elif disbursement.frequency == DisbursementFrequency.HOURLY:
-            disbursement.next_run_timestamp = disbursement.created_at + timedelta(hours=1)
-        elif disbursement.frequency == DisbursementFrequency.WEEKLY:
-            disbursement.next_run_timestamp = disbursement.created_at + timedelta(weeks=1)
-        elif disbursement.frequency == DisbursementFrequency.MONTHLY:
-            disbursement.next_run_timestamp = disbursement.created_at.replace(day=1) + timedelta(days=32)
+    def validate_currency(self, value):
+        if value == Currency.DOLLAR:
+            raise ValidationError('Dollar disbursements are currently not available.')
 
-        disbursement.save()
-        return disbursement
+        return value
 
     def validate_amount(self, value):
-        _user = self.context['request'].user
-        if value > Decimal(_user.balance):
-            raise ValidationError(
-                'Insufficient Balance',
-                'insufficient_balance_error',
-            )
+        if value > Decimal(self.context['request'].user.balance):
+            raise ValidationError('Insufficient balance to initiate a disbursement. Kindly top up.')
 
         return value

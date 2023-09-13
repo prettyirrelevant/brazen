@@ -1,16 +1,20 @@
-from django.conf import settings
-from django.db import transaction
 import logging
 from decimal import Decimal
+
+from django.conf import settings
+from django.db import transaction
+
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
-from apps.accounts.models import Account
+from apps.accounts.choices import Currency
+from apps.accounts.models import Wallet
 from common.helpers import success_response
 from services.anchor import AnchorClient
 
-from .models import Transaction, TransactionStatus, TransactionType
+from .choices import TransactionStatus
+from .models import Transaction
 from .serializers import TransactionSerializer
 
 anchor_client = AnchorClient(
@@ -25,40 +29,41 @@ logger = logging.getLogger(__name__)
 class WebhookAPIView(APIView):
     permission_classes = (AllowAny,)
 
-    @transaction.atomic
     def post(self, request, *args, **kwargs):  # noqa: ARG002
         logger.info(f'Webhook payload is: {request.data}')
-        if request.data['data']['type'] == 'payment.settled':
-            source = Account.objects.get(
-                deposit_account_id=request.data['data']['attributes']['payment']['settlementAccount']['accountId'],
-            )
-            Transaction.objects.create(
-                anchor_tx_id=request.data['data']['attributes']['payment']['paymentId'],
-                source=source,
-                destination='self',
-                tx_type=TransactionType.FUNDING,
-                amount=request.data['data']['attributes']['payment']['amount'] / 100,
-                status=TransactionStatus.SUCCESSFUL,
-                metadata=request.data,
-            )
 
-            # NOTE: This should not be like this i.e. race condition
-            source.balance += Decimal(request.data['data']['attributes']['payment']['amount'] / 100)
-            source.save()
+        if request.data['data']['type'] == 'payment.settled':
+            metadata = request.data['data']['attributes']['payment']
+            wallet = Wallet.objects.get(
+                anchor_deposit_account_id=metadata['settlementAccount']['accountId'],
+            )
+            wallet.credit(
+                metadata=metadata,
+                provider_ref=metadata['paymentId'],
+                currency=Currency(metadata['currency']),
+                amount_in_least_denomination=Decimal(metadata['amount']),
+            )
 
         if request.data['data']['type'] == 'nip.transfer.successful':
-            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
-            tx.metadata = request.data
-            tx.status = TransactionStatus.SUCCESSFUL
+            metadata = request.data['data']
+            with transaction.atomic():
+                tx = Transaction.objects.get(anchor_ref=metadata['relationships']['transfer']['data']['id'])
+                wallet = tx.account.wallets.get(
+                    anchor_deposit_account_id=metadata['relationships']['account']['data']['id'],
+                )
+                wallet.debit(tx=tx, metadata=metadata)
+                tx.disbursement_event.create_next_disbursement_event()
 
-            # NOTE: This should not be like this i.e. race condition
-            tx.source.balance -= tx.amount
-            tx.source.save()
-            tx.save()
         if request.data['data']['type'] == 'nip.transfer.failed':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
-            tx.metadata = request.data
+            tx.metadata = request.data['data']
             tx.status = TransactionStatus.FAILED
+            tx.save()
+
+        if request.data['data']['type'] == 'nip.transfer.reversed':
+            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
+            tx.metadata = request.data['data']
+            tx.status = TransactionStatus.REVERSED
             tx.save()
 
         return success_response(data=None)
@@ -81,7 +86,7 @@ class TransactionsAPIView(ListAPIView):
 class VerifyAccountAPIView(APIView):
     permission_classes = (AllowAny,)
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):  # noqa: ARG002
         account_number = kwargs['account_number']
         bank_code_or_id = kwargs['bank_code_or_id']
         resp = anchor_client.verify_account(account_number=account_number, bank_code=bank_code_or_id)
