@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework.serializers import ModelSerializer, ValidationError
 
 from apps.accounts.choices import Currency
-from apps.disbursements.models import Beneficiary, Disbursement
+from apps.disbursements.models import Beneficiary, Disbursement, DisbursementEvent
 from services.anchor import AnchorClient
 
 anchor_client = AnchorClient(
@@ -19,6 +19,7 @@ class BeneficiarySerializer(ModelSerializer):
         model = Beneficiary
         exclude = ()
         read_only_fields = (
+            'id',
             'account',
             'created_at',
             'updated_at',
@@ -40,11 +41,21 @@ class BeneficiarySerializer(ModelSerializer):
         return beneficiary
 
 
+class DisbursementEventSerializer(ModelSerializer):
+    class Meta:
+        model = DisbursementEvent
+        fields = ('id', 'retries', 'run_at', 'status')
+
+
 class DisbursementSerializer(ModelSerializer):
+    events = DisbursementEventSerializer(many=True)
+
     class Meta:
         model = Disbursement
         read_only_fields = (
+            'id',
             'account',
+            'events',
             'created_at',
             'updated_at',
             'status',

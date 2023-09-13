@@ -18,27 +18,19 @@ anchor_client = AnchorClient(
 
 
 class AccountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Account
-        fields = (
-            'email',
-            'first_name',
-            'last_name',
-            'date_joined',
-        )
-
-
-class AccountCreationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(min_length=8, required=True, write_only=True)
 
     class Meta:
         model = Account
         fields = (
+            'id',
             'email',
             'first_name',
             'last_name',
             'password',
+            'date_joined',
         )
+        read_only_fields = ('id', 'date_joined')
 
     def create(self, validated_data):
         return Account.objects.create_user(**validated_data)
@@ -164,7 +156,7 @@ class WalletSerializer(serializers.ModelSerializer):
         )
 
         read_only_fields = (
-            'balance',
+            'idbalance',
             'bank_name',
             'account_name',
             'account_number',
@@ -204,4 +196,4 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ('account', 'gender', 'state', 'country', 'kyc_level', 'wallets')
+        fields = ('id', 'account', 'gender', 'state', 'country', 'kyc_level', 'wallets')

@@ -10,7 +10,7 @@ from common.helpers import success_response
 
 from .models import Account, Profile
 from .serializers import (
-    AccountCreationSerializer,
+    AccountSerializer,
     KYCTierThreeUpgradeSerializer,
     KYCTierTwoUpgradeSerializer,
     ProfileSerializer,
@@ -21,7 +21,7 @@ from .serializers import (
 class AccountCreationAPIView(CreateAPIView):
     queryset = Account.objects.get_queryset()
     permission_classes = (AllowAny,)
-    serializer_class = AccountCreationSerializer
+    serializer_class = AccountSerializer
 
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
