@@ -81,13 +81,3 @@ class TransactionsAPIView(ListAPIView):
     def list(self, request, *args, **kwargs):  # noqa: A003
         response = super().list(request, *args, **kwargs)
         return success_response(response.data)
-
-
-class VerifyAccountAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def get(self, request, *args, **kwargs):  # noqa: ARG002
-        account_number = kwargs['account_number']
-        bank_code_or_id = kwargs['bank_code_or_id']
-        resp = anchor_client.verify_account(account_number=account_number, bank_code=bank_code_or_id)
-        return resp['data']
