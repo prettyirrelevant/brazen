@@ -76,6 +76,7 @@ class Wallet(TimestampedModel):
     balance = models.DecimalField('balance', max_digits=20, decimal_places=2, default=Decimal('0.00'))
     currency = models.CharField('currency', choices=Currency.choices, max_length=3, null=False, blank=False)
 
+    # todo: make account_number unique?
     bank_name = models.CharField('deposit bank name', max_length=250, null=True, blank=True)
     account_name = models.CharField('deposit account name', max_length=250, null=True, blank=True)
     account_number = models.CharField('deposit account number', max_length=100, null=True, blank=True)
