@@ -23,17 +23,17 @@ class BeneficiarySerializer(ModelSerializer):
             'tag',
             'account',
             'account_name',
-            'anchor_bank_id',
+            'provider_bank_id',
             'account_number',
-            'anchor_bank_code',
-            'anchor_counterparty_id',
+            'provider_bank_code',
+            'provider_counterparty_id',
         )
         read_only_fields = (
             'id',
             'account',
             'created_at',
             'updated_at',
-            'counterparty_id',
+            'provider_counterparty_id',
         )
 
     def create(self, validated_data):
@@ -43,8 +43,8 @@ class BeneficiarySerializer(ModelSerializer):
         counterparty_creation_response = anchor_client.create_counterparty(
             account_name=beneficiary.account_name,
             account_number=beneficiary.account_number,
-            bank_id=beneficiary.anchor_bank_id,
-            bank_code=beneficiary.anchor_bank_code,
+            bank_id=beneficiary.provider_bank_id,
+            bank_code=beneficiary.provider_bank_code,
         )
         beneficiary.counterparty_id = counterparty_creation_response['data']['id']
         beneficiary.save()

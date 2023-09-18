@@ -21,6 +21,8 @@ class BeneficiaryView(ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if getattr(self, 'swagger_fake_view', False):
+            return qs
         return qs.filter(account=self.request.user)
 
 

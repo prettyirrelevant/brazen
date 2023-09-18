@@ -9,7 +9,6 @@ from .views import (
     KYCTierThreeAccountUpgradeAPIView,
     KYCTierTwoAccountUpgradeAPIView,
     MyProfileAPIView,
-    ProfileCreationAPIView,
 )
 
 urlpatterns = [
@@ -25,7 +24,6 @@ urlpatterns = [
         AccountAuthenticationBlacklistAPIView.as_view(),
         name='blacklist-account-auth-credentials',
     ),
-    path('accounts/profile/create', ProfileCreationAPIView.as_view(), name='create-profile'),
     path('accounts/me', MyProfileAPIView.as_view(), name='my-account'),
     path('accounts/wallets', AccountWalletCreationAPIView.as_view(), name='account-wallet-creation'),
     path('accounts/kyc/tier-2', KYCTierTwoAccountUpgradeAPIView.as_view(), name='tier-2-account-upgrade'),

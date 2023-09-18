@@ -6,6 +6,7 @@ from dateutil.relativedelta import relativedelta
 from django.db import models
 
 from apps.accounts.choices import Currency
+from common.choices import Provider
 from common.models import TimestampedModel
 
 from .choices import DisbursementEventStatus, DisbursementFrequency, DisbursementStatus
@@ -26,9 +27,10 @@ class Beneficiary(TimestampedModel, models.Model):
     account_number = models.CharField(max_length=11, null=False, blank=False)
     account_name = models.CharField(max_length=150, null=False, blank=False)
 
-    anchor_bank_code = models.CharField(max_length=150, null=False, blank=False)
-    anchor_bank_id = models.CharField(max_length=150, null=False, blank=False)
-    anchor_counterparty_id = models.CharField(max_length=150, null=False, blank=False)
+    provider_bank_code = models.CharField(max_length=150, null=False, blank=False)
+    provider_bank_id = models.CharField(max_length=150, null=False, blank=False)
+    provider_counterparty_id = models.CharField(max_length=150, null=False, blank=False)
+    provider = models.CharField('provider', choices=Provider.choices, default=Provider.ANCHOR, max_length=50, null=False, blank=False)
 
     class Meta:
         constraints: ClassVar[list] = [
