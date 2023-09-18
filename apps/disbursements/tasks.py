@@ -5,10 +5,10 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.choices import WalletCurrency
-from apps.disbursements.choices import DisbursementStatus
-from apps.disbursements.models import Disbursement
-from apps.transactions.choices import TransactionCategory
+from apps.disbursements.choices import DisbursementEventStatus, DisbursementStatus
+from apps.disbursements.models import MAX_DISBURSEMENT_RETRIES, DisbursementEvent
+from apps.transactions.choices import TransactionStatus, TransactionType
+from apps.transactions.models import Transaction
 from services.anchor import AnchorClient
 from typing import TYPE_CHECKING
 
@@ -21,43 +21,70 @@ anchor_client = AnchorClient(
 )
 
 
-@db_task()
-def initiate_disbursement(disbursement_id):
-    currency: str = WalletCurrency.NGN
-
+@db_task(retries=MAX_DISBURSEMENT_RETRIES, retry_delay=60)
+def initiate_transfer_for_event(event_id):
     with transaction.atomic():
-        disbursement = Disbursement.objects.get(id=disbursement_id)
-        wallet: Wallet = disbursement.account.wallets.filter(currency=currency).first()
+        event = DisbursementEvent.objects.get(id=event_id)
+        if event.disbursement_event_transactions.filter(
+            status__in=[TransactionStatus.PENDING, TransactionStatus.SUCCESSFUL],
+        ).exists():
+            return
 
-        if not wallet:
-            # raise error
-            return False
-
-        res_json = anchor_client.initiate_transfer(
-            amount=disbursement.amount,
-            reason=disbursement.description,
-            counterparty_id=disbursement.beneficiary.counterparty_id,
-            account_id=disbursement.account.deposit_account_id,
+        event.retries += 1
+        transfer_initiation_response = anchor_client.initiate_transfer(
+            amount=event.amount,
+            reason=event.description,
+            account_id=event.account.deposit_account_id,
+            counterparty_id=event.beneficiary.counterparty_id,
         )
-        metadata = res_json['data']
-        provider_tx_id = res_json['data']['id']
+        if transfer_initiation_response is None:
+            raise Exception(f'Something happened while initiating the transfer for event {event.id}')  # noqa: TRY002
 
-        wallet.pre_debit(
-            provider_tx_id=provider_tx_id,
-            category=TransactionCategory.DISBURSEMENT,
-            amount=disbursement.amount,
-            destination=disbursement.beneficiary.account_name,
-            metadata=metadata,
+        Transaction.objects.create(
+            amount=event.amount,
+            disbursement_event=event,
+            status=TransactionStatus.PENDING,
+            source=event.disbursement.account,
+            tx_type=TransactionType.DISBURSEMENT,
+            destination=event.beneficiary.account_name,
+            metadata=transfer_initiation_response['data'],
+            anchor_tx_id=transfer_initiation_response['data']['id'],
         )
 
-        disbursement.update_next_run_timestamp()
-        disbursement.save()
-        return None
+        event.save()
 
 
-@db_periodic_task(crontab(minute='*/10'))
-def check_for_disbursements():
+@db_periodic_task(crontab(minute='*/5'))
+def begin_disbursement_events():
     now = timezone.now()
-    all_disbursements = Disbursement.objects.filter(next_run_timestamp__gte=now, status=DisbursementStatus.ACTIVE)
-    for disbursement in all_disbursements:
-        initiate_disbursement.schedule((disbursement.id,), delay=1)
+    DisbursementEvent.objects.filter(
+        run_at__gte=now,
+        retries__lt=MAX_DISBURSEMENT_RETRIES,
+        status=DisbursementEventStatus.NOT_STARTED,
+        disbursement__status=DisbursementStatus.ACTIVE,
+    ).update(status=DisbursementEventStatus.PENDING)
+
+
+@db_periodic_task(crontab(minute='*/5'))
+def initiate_transfers_for_pending_disbursement_events():
+    for event in DisbursementEvent.objects.filter(
+        retries__lt=MAX_DISBURSEMENT_RETRIES,
+        status=DisbursementEventStatus.PENDING,
+        disbursement__status=DisbursementStatus.ACTIVE,
+    ):
+        initiate_transfer_for_event((event.id,), delay=1)
+
+
+@db_periodic_task(crontab(minute='*/5'))
+def disable_disbursements_after_max_retries():
+    for event in DisbursementEvent.objects.filter(
+        retries=MAX_DISBURSEMENT_RETRIES,
+        status=DisbursementEventStatus.PENDING,
+        disbursement__status=DisbursementStatus.ACTIVE,
+    ):
+        # todo: check that all transactions failed.
+        event.status = DisbursementEventStatus.FAILURE
+        event.disbursement.status = DisbursementStatus.INACTIVE
+        event.disbursement.save()
+        event.save()
+        # todo: send an email that a disbursement has been disabled after several tries.

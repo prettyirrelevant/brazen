@@ -1,14 +1,19 @@
 import uuid
 from decimal import Decimal
+from typing import ClassVar
+
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField, EncryptedTextField
 
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
-from apps.accounts.choices import Country, Gender, State, WalletCurrency
-from apps.accounts.managers import AccountManager
-from apps.transactions.models import Transaction, TransactionStatus, TransactionType
-from common.models import BaseModel
+from apps.disbursements.choices import DisbursementEventStatus
+from apps.transactions.choices import TransactionStatus, TransactionType
+from apps.transactions.models import Transaction
+from common.models import TimestampedModel
+
+from .choices import KYC, Country, Currency, Gender, KYCTierThreeDocumentType, State
+from .managers import AccountManager
 
 
 class Account(AbstractUser):
@@ -19,14 +24,13 @@ class Account(AbstractUser):
     last_name = models.CharField('last name', max_length=150, null=False, blank=False)
     first_name = models.CharField('first name', max_length=150, null=False, blank=False)
 
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ('first_name', 'last_name')
 
     objects = AccountManager()
 
 
-class Profile(BaseModel):
+class Profile(TimestampedModel):
     account = models.OneToOneField(
         Account,
         on_delete=models.SET_NULL,
@@ -34,26 +38,36 @@ class Profile(BaseModel):
         null=True,
         blank=True,
     )
-    phone_number = models.CharField('phone number', unique=True, max_length=11, null=False, blank=False)
 
-    address = models.TextField('address', null=False, blank=False)
-    city = models.CharField('city', max_length=100, null=False, blank=False)
-    postal_code = models.IntegerField('postal code', null=False, blank=False)
-
-    gender = models.CharField('gender', max_length=20, choices=Gender.choices)
+    # Anchor Customer creation requirements
+    address = EncryptedTextField('address', null=True, blank=True)
+    city = EncryptedCharField('city', max_length=100, null=True, blank=True)
+    postal_code = EncryptedCharField('postal code', max_length=50, null=True, blank=True)
+    state = EncryptedCharField('state', max_length=20, choices=State.choices, null=True, blank=True)
     country = models.CharField('country', max_length=10, choices=Country.choices, default=Country.NIGERIA)
-    state = models.CharField('state', max_length=20, choices=State.choices, null=False, blank=False)
+    phone_number = EncryptedCharField('phone number', unique=True, max_length=11, null=True, blank=True)
 
-    date_of_birth = models.DateField('date of birth')
-    # TODO: encrypt bvn data
-    bvn =  models.CharField(
-        'Bank Verification Number', max_length=128, blank=True, null=True, editable=False,
+    # KYC Tier Two requirements
+    date_of_birth = EncryptedDateField('date of birth', null=True, blank=True)
+    bvn = EncryptedCharField('bank verification number', max_length=11, blank=True, null=True)
+    gender = models.CharField('gender', max_length=20, choices=Gender.choices, null=True, blank=True)
+
+    # KYC Tier Three requirements
+    document_identifier = EncryptedCharField('document identifier', max_length=250, null=True, blank=True)
+    document_expiry_date = EncryptedDateField('document expiry date', null=True, blank=True)
+    document_type = EncryptedCharField(
+        'document type',
+        max_length=250,
+        choices=KYCTierThreeDocumentType.choices,
+        null=True,
+        blank=True,
     )
 
-    customer_id = models.CharField('customer id', max_length=150, null=True, blank=True)
+    kyc_level = models.CharField('kyc level', max_length=6, choices=KYC.choices, default=KYC.TIER_1)
+    anchor_customer_id = models.CharField('anchor customer id', unique=True, max_length=150, null=True, blank=True)
 
 
-class Wallet(BaseModel):
+class Wallet(TimestampedModel):
     account = models.ForeignKey(
         Account,
         on_delete=models.SET_NULL,
@@ -61,143 +75,62 @@ class Wallet(BaseModel):
         null=True,
         blank=True,
     )
-    profile = models.ForeignKey(
-        Profile,
-        on_delete=models.SET_NULL,
-        related_name='wallets',
-        null=True,
-        blank=True,
-    )
-    currency = models.CharField(
-        'currency',
-        max_length=10,
-        choices=WalletCurrency.choices,
-        default=WalletCurrency.NAIRA,
-    )
+    balance = models.DecimalField('balance', max_digits=20, decimal_places=2, default=Decimal('0.00'))
+    currency = models.CharField('currency', choices=Currency.choices, max_length=3, null=False, blank=False)
 
-    provider_account_id = models.CharField('provider account id', max_length=150, null=False, blank=False)
-    account_number = models.CharField('deposit account number', max_length=11, null=False, blank=False)
-    account_name =  models.CharField('deposit account name', max_length=150, null=False, blank=False)
-    bank_name = models.CharField('deposit bank name', max_length=150, null=False, blank=False)
-    bank_code = models.CharField('deposit bank code', max_length=150, null=False, blank=False)
+    # todo: make account_number unique?
+    bank_name = models.CharField('deposit bank name', max_length=250, null=True, blank=True)
+    account_name = models.CharField('deposit account name', max_length=250, null=True, blank=True)
+    account_number = models.CharField('deposit account number', max_length=100, null=True, blank=True)
 
-    _balance = models.DecimalField(
-        max_digits=15,
-        decimal_places=6,
-        default=0.00,
-        db_column='balance',
-        editable=False,
+    anchor_deposit_account_id = models.CharField(
+        'anchor deposit account id',
+        unique=True,
+        max_length=150,
+        null=False,
+        blank=False,
     )
 
-    is_locked = models.BooleanField(default=False)
-    locked_reason = models.CharField(max_length=1024, blank=True, default='')
-
-    def __str__(self):
-        return f'{self.uid} - {self.currency}'
+    is_locked = models.BooleanField('is locked', default=False)
+    is_locked_reason = models.TextField('is locked reason', null=True, blank=True)
 
     class Meta:
-        unique_together = ('account', 'profile', 'currency')
+        constraints: ClassVar[list] = [
+            models.UniqueConstraint(
+                fields=('account', 'currency'),
+                name='unique_wallet_per_user_and_currency',
+            ),
+        ]
 
-    @property
-    def balance(self) -> Decimal:
-        return self._balance
+    @transaction.atomic()
+    def credit(self, provider_ref: str, amount_in_least_denomination: Decimal, currency: Currency, metadata: dict):
+        if currency == Currency.DOLLAR:
+            raise ValueError('Dollar top up is not currently supported')
 
-    def get_sum_of_total_disbursements(self) -> Decimal:
-        """
-        Get sum of total disbursements
-        """
-        _qs = self.transactions.filter(tx_type='debit', category='disbursement').exclude(is_reversal=True)
-        return _qs.aggregate(total=models.Sum('amount', default=Decimal('0'))).get(
-            'total', Decimal(0),
-        ) or Decimal(0)
-
-    def create_transaction_record(
-        self,
-        provider_tx_id,
-        destination,
-        tx_type,
-        amount,
-        status,
-        **kwargs,
-    ) -> Transaction:
-        return self.transactions.create(
-            provider_tx_id=provider_tx_id,
+        amount = amount_in_least_denomination / Decimal(100)
+        Transaction.objects.create(
+            amount=amount,
+            metadata=metadata,
             account=self.account,
-            destination=destination,
-            tx_type=tx_type,
-            amount=amount,
-            status=status,
-            previous_balance=kwargs.get('previous_balance', None),
-            metadata=kwargs.get('metadata', None),
+            anchor_ref=provider_ref,
+            tx_type=TransactionType.FUNDING,
+            status=TransactionStatus.SUCCESSFUL,
+            currency=Currency(metadata['currency']),
         )
 
-    def credit(
-        self,
-        provider_tx_id: str,
-        category: str,
-        amount: Decimal,
-        **kwargs,
-    ) -> Transaction:
-        transaction_type: str = TransactionType.CREDIT
+        self.balance = models.F('balance') + amount
+        self.save()
 
-        with transaction.atomic():
-            __balance = self._balance
-
-            transaction = self.create_transaction_record(
-                provider_tx_id=provider_tx_id,
-                destination='self',
-                tx_type=transaction_type,
-                category=category,
-                amount=amount,
-                status=TransactionStatus.SUCCESSFUL,
-                previous_balance = __balance,
-                metadata=kwargs.get('metadata', None),
-            )
-            self._balance = models.F('_balance') + amount
-            self.save()
-
-        return transaction
-
-    def pre_debit(
-        self,
-        provider_tx_id: str,
-        category: str,
-        amount: Decimal,
-        destination: str,
-        **kwargs,
-    ) -> Transaction:
-        transaction_type: str = TransactionType.CREDIT
-        transaction_status: str = TransactionStatus.PENDING
-
+    @transaction.atomic()
+    def debit(self, tx: Transaction, metadata: dict):
         if self.is_locked:
-            raise ValidationError(
-                'Wallet is locked',
-                code='wallet_locked',
-            )
-        return self.create_transaction_record(
-            provider_tx_id=provider_tx_id,
-            amount=amount,
-            status=transaction_status,
-            tx_type=transaction_type,
-            category=category,
-            destination=destination,
-            metadata=kwargs.get('metadata', None),
-        )
+            raise Exception(self.is_locked_reason)  # noqa: TRY002
 
-    def debit(
-        self,
-        transaction: Transaction,
-    ) -> None:
+        tx.metadata = metadata
+        tx.status = TransactionStatus.SUCCESSFUL
+        tx.disbursement_event.status = DisbursementEventStatus.SUCCESS
+        self.balance = models.F('balance') - tx.amount
 
-        if transaction.wallet == self and transaction.status == TransactionStatus.SUCCESSFUL:
-            self._balance = models.F('_balance') + transaction.amount
-            self.save()
-        else:
-            raise ValidationError(
-                'Transaction not successful',
-                code='transaction_not_successful',
-            )
-
-
-
-
+        tx.save()
+        self.save()
+        tx.disbursement_event.save()

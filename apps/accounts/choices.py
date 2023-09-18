@@ -9,6 +9,25 @@ class WalletCurrency(models.TextChoices):
     DOLLAR = 'USD'
 
 
+class Currency(models.TextChoices):
+    NAIRA = 'NGN'
+    DOLLAR = 'USD'
+
+
+class KYC(models.TextChoices):
+    TIER_1 = 'TIER_1'
+    TIER_2 = 'TIER_2'
+    TIER_3 = 'TIER_3'
+
+
+class KYCTierThreeDocumentType(models.TextChoices):
+    NIN_SLIP = 'NIN_SLIP'
+    PASSPORT = 'PASSPORT'
+    VOTERS_CARD = 'VOTERS_CARD'
+    NATIONAL_ID = 'NATIONAL_ID'
+    DRIVERS_LICENSE = 'DRIVERS_LICENSE'
+
+
 class Gender(models.TextChoices):
     MALE = 'Male'
     FEMALE = 'Female'

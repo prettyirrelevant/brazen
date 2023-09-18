@@ -8,11 +8,12 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
+from apps.accounts.choices import Currency
 from apps.accounts.models import Wallet
 from common.helpers import success_response
 from services.anchor import AnchorClient
 
-from .choices import TransactionCategory, TransactionStatus
+from .choices import TransactionStatus
 from .models import Transaction
 from .serializers import TransactionSerializer
 
@@ -28,37 +29,41 @@ logger = logging.getLogger(__name__)
 class WebhookAPIView(APIView):
     permission_classes = (AllowAny,)
 
-    @transaction.atomic
     def post(self, request, *args, **kwargs):  # noqa: ARG002
         logger.info(f'Webhook payload is: {request.data}')
+
         if request.data['data']['type'] == 'payment.settled':
-            account_id: str = request.data['data']['attributes']['payment']['settlementAccount']['accountId']
-            currency: str = request.data['data']['attributes']['payment']['currency']
-            amount_in_kobo: float = request.data['data']['attributes']['payment']['amount']
-            provider_tx_id: str = request.data['data']['attributes']['payment']['paymentId']
-
-            amount_in_ngn = Decimal(amount_in_kobo / 100)
-            wallet: Wallet = Wallet.objects.get(provider_account_id=account_id, currency=currency.upper())
-
+            metadata = request.data['data']['attributes']['payment']
+            wallet = Wallet.objects.get(
+                anchor_deposit_account_id=metadata['settlementAccount']['accountId'],
+            )
             wallet.credit(
-                provider_tx_id=provider_tx_id,
-                amount = amount_in_ngn,
-                category=TransactionCategory.FUNDING,
-                metadata=request.data,
+                metadata=metadata,
+                provider_ref=metadata['paymentId'],
+                currency=Currency(metadata['currency']),
+                amount_in_least_denomination=Decimal(metadata['amount']),
             )
 
         if request.data['data']['type'] == 'nip.transfer.successful':
-            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
-            with transaction.atomic:
-                tx.metadata = request.data
-                tx.status = TransactionStatus.SUCCESSFUL
-                tx.wallet.credit(transaction=tx)
-                tx.save()
+            metadata = request.data['data']
+            with transaction.atomic():
+                tx = Transaction.objects.get(anchor_ref=metadata['relationships']['transfer']['data']['id'])
+                wallet = tx.account.wallets.get(
+                    anchor_deposit_account_id=metadata['relationships']['account']['data']['id'],
+                )
+                wallet.debit(tx=tx, metadata=metadata)
+                tx.disbursement_event.create_next_disbursement_event()
 
         if request.data['data']['type'] == 'nip.transfer.failed':
             tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
-            tx.metadata = request.data
+            tx.metadata = request.data['data']
             tx.status = TransactionStatus.FAILED
+            tx.save()
+
+        if request.data['data']['type'] == 'nip.transfer.reversed':
+            tx = Transaction.objects.get(anchor_tx_id=request.data['data']['relationships']['transfer']['data']['id'])
+            tx.metadata = request.data['data']
+            tx.status = TransactionStatus.REVERSED
             tx.save()
 
         return success_response(data=None)
@@ -78,13 +83,3 @@ class TransactionsAPIView(ListAPIView):
     def list(self, request, *args, **kwargs):  # noqa: A003
         response = super().list(request, *args, **kwargs)
         return success_response(response.data)
-
-
-class VerifyAccountAPIView(APIView):
-    permission_classes = (AllowAny,)
-
-    def get(self, request, *args, **kwargs):
-        account_number = kwargs['account_number']
-        bank_code_or_id = kwargs['bank_code_or_id']
-        resp = anchor_client.verify_account(account_number=account_number, bank_code=bank_code_or_id)
-        return resp['data']

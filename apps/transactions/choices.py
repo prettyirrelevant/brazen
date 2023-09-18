@@ -18,3 +18,5 @@ class TransactionCategory(models.TextChoices):
     DISBURSEMENT = 'disbursement'
     WITHDRAWAL = 'withdrawal'
     REVERSAL = 'reversal'
+    BILL_PAYMENT = 'bill payment'
+   
